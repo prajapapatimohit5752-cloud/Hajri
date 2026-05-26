@@ -502,7 +502,7 @@
   // Camera
   async function startCamera() {
     try {
-      videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+      videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
       document.getElementById('video').srcObject = videoStream;
       document.getElementById('cam-start-btn').style.display = 'none';
       document.getElementById('camera-wrap').style.display = 'block';
