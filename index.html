@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<title>Haajri — Site Attendance</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;800&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --ink: #1a1a2e;
+    --paper: #f5f0e8;
+    --accent: #e8572a;
+    --accent2: #2a7ae8;
+    --success: #1aad6e;
+    --warn: #f59e0b;
+    --card: #ffffff;
+    --muted: #7a7a8a;
+    --border: #e0dbd0;
+    --radius: 16px;
+    --font-head: 'Baloo 2', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--paper);
+    font-family: var(--font-body);
+    color: var(--ink);
+    min-height: 100vh;
+    padding: 0 0 60px;
+  }
+  header {
+    background: var(--ink);
+    color: white;
+    padding: 20px 20px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .logo { font-family: var(--font-head); font-size: 26px; font-weight: 800; letter-spacing: -0.5px; }
+  .logo span { color: var(--accent); }
+  .time-badge {
+    font-size: 12px;
+    background: rgba(255,255,255,0.12);
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+  .main { padding: 20px 16px; max-width: 480px; margin: 0 auto; }
+
+  /* Step indicators */
+  .steps {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 24px;
+  }
+  .step-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--border);
+    transition: all 0.3s;
+    flex-shrink: 0;
+  }
+  .step-dot.active { background: var(--accent); width: 24px; border-radius: 4px; }
+  .step-dot.done { background: var(--success); }
+
+  /* Cards */
+  .card {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 14px;
+    border: 1px solid var(--border);
+  }
+  .card-label {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  /* Worker selector */
+  select {
+    width: 100%;
+    padding: 14px 16px;
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    font-family: var(--font-body);
+    font-size: 16px;
+    background: var(--paper);
+    color: var(--ink);
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%237a7a8a' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  select:focus { outline: none; border-color: var(--accent); }
+
+  /* Entry / Exit toggle */
+  .toggle-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .toggle-btn {
+    padding: 16px;
+    border-radius: 12px;
+    border: 2px solid var(--border);
+    background: white;
+    font-family: var(--font-head);
+    font-size: 17px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    color: var(--muted);
+  }
+  .toggle-btn .icon { font-size: 26px; }
+  .toggle-btn.selected-entry {
+    border-color: var(--success);
+    background: #f0fdf7;
+    color: var(--success);
+  }
+  .toggle-btn.selected-exit {
+    border-color: var(--accent);
+    background: #fff5f2;
+    color: var(--accent);
+  }
+
+  /* Camera section */
+  .camera-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4/3;
+    background: #111;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 12px;
+  }
+  #video {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    display: block;
+    transform: scaleX(-1);
+  }
+  #canvas { display: none; }
+  #preview {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    border-radius: 12px;
+    display: none;
+  }
+  .cam-overlay {
+    position: absolute;
+    bottom: 12px; left: 0; right: 0;
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+  }
+  .cam-btn {
+    padding: 10px 22px;
+    border-radius: 30px;
+    border: none;
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .cam-btn:active { opacity: 0.75; }
+  .cam-btn-capture { background: white; color: var(--ink); }
+  .cam-btn-retake { background: rgba(255,255,255,0.25); color: white; }
+  .cam-hint { font-size: 13px; color: var(--muted); text-align: center; margin-top: 4px; }
+
+  /* Camera start button */
+  .cam-start {
+    width: 100%;
+    padding: 50px 20px;
+    background: #111;
+    border-radius: 12px;
+    border: none;
+    color: white;
+    font-family: var(--font-head);
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .cam-icon { font-size: 40px; }
+
+  /* Submit button */
+  .submit-btn {
+    width: 100%;
+    padding: 18px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: var(--radius);
+    font-family: var(--font-head);
+    font-size: 20px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.02em;
+    transition: transform 0.15s, opacity 0.2s;
+    margin-top: 6px;
+  }
+  .submit-btn:active { transform: scale(0.97); }
+  .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .submit-btn.success-btn { background: var(--success); }
+
+  /* Success screen */
+  #success-screen {
+    display: none;
+    text-align: center;
+    padding: 40px 20px;
+  }
+  .success-icon {
+    width: 80px; height: 80px;
+    background: var(--success);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+    font-size: 36px;
+  }
+  .success-title {
+    font-family: var(--font-head);
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--ink);
+    margin-bottom: 8px;
+  }
+  .success-sub { font-size: 15px; color: var(--muted); margin-bottom: 28px; line-height: 1.5; }
+  .new-entry-btn {
+    padding: 14px 32px;
+    background: var(--ink);
+    color: white;
+    border: none;
+    border-radius: var(--radius);
+    font-family: var(--font-head);
+    font-size: 17px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  /* Loading spinner */
+  .spinner {
+    display: inline-block;
+    width: 20px; height: 20px;
+    border: 2px solid rgba(255,255,255,0.4);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+    margin-right: 8px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Error message */
+  .error-msg {
+    background: #fff2f0;
+    border: 1px solid #ffccc7;
+    color: #c0392b;
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 14px;
+    margin-top: 10px;
+    display: none;
+  }
+
+  /* Location badge */
+  .loc-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 8px;
+  }
+  .loc-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); flex-shrink: 0; }
+  .loc-dot.loading { background: var(--warn); animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  .note {
+    font-size: 12px;
+    color: var(--muted);
+    text-align: center;
+    padding: 8px 0 0;
+    line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">हाज़री<span>.</span></div>
+  <div class="time-badge" id="clock">--:-- --</div>
+</header>
+
+<div class="main">
+
+  <!-- Step dots -->
+  <div class="steps">
+    <div class="step-dot active" id="dot1"></div>
+    <div class="step-dot" id="dot2"></div>
+    <div class="step-dot" id="dot3"></div>
+  </div>
+
+  <!-- FORM -->
+  <div id="form-screen">
+
+    <!-- Worker name -->
+    <div class="card">
+      <div class="card-label">Your name</div>
+      <select id="worker-select" disabled>
+        <option value="">Loading workers...</option>
+      </select>
+      <div id="worker-load-err" style="font-size:13px;color:#c0392b;margin-top:6px;display:none;">
+        ⚠️ Could not load worker list. Check your Apps Script URL.
+      </div>
+    </div>
+
+    <!-- Entry / Exit -->
+    <div class="card">
+      <div class="card-label">Type</div>
+      <div class="toggle-group">
+        <button class="toggle-btn" id="btn-entry" onclick="setType('entry')">
+          <span class="icon">🌅</span>
+          Entry
+        </button>
+        <button class="toggle-btn" id="btn-exit" onclick="setType('exit')">
+          <span class="icon">🌆</span>
+          Exit
+        </button>
+      </div>
+    </div>
+
+    <!-- Camera -->
+    <div class="card">
+      <div class="card-label">Photo proof</div>
+      <button class="cam-start" id="cam-start-btn" onclick="startCamera()">
+        <span class="cam-icon">📷</span>
+        Tap to open camera
+      </button>
+      <div class="camera-wrap" id="camera-wrap" style="display:none">
+        <video id="video" autoplay playsinline></video>
+        <canvas id="canvas"></canvas>
+        <div class="cam-overlay" id="cam-controls">
+          <button class="cam-btn cam-btn-capture" onclick="capturePhoto()">📸 Capture</button>
+        </div>
+      </div>
+      <img id="preview" alt="Captured photo"/>
+      <div class="cam-hint" id="cam-hint">Take a clear selfie so your presence is recorded.</div>
+      <div class="loc-badge"><div class="loc-dot loading" id="loc-dot"></div><span id="loc-text">Getting location...</span></div>
+    </div>
+
+    <!-- Submit -->
+    <button class="submit-btn" id="submit-btn" onclick="submitAttendance()" disabled>
+      Submit Attendance
+    </button>
+    <div class="error-msg" id="error-msg"></div>
+    <p class="note">Your data is only used for attendance records.<br>No personal data is shared or sold.</p>
+
+  </div>
+
+  <!-- SUCCESS SCREEN -->
+  <div id="success-screen">
+    <div class="success-icon">✓</div>
+    <div class="success-title" id="success-title">Attendance marked!</div>
+    <div class="success-sub" id="success-sub"></div>
+    <button class="new-entry-btn" onclick="resetForm()">Mark another</button>
+  </div>
+
+</div>
+
+<script>
+  // ============================================================
+  // ✏️  PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL HERE
+  // ============================================================
+  const APPS_SCRIPT_URL = 'https://script.google.com/a/macros/dvconsulting.co.in/s/AKfycbxPvk-6Q3dm0SRANG0mkiEygtYblegXzLbuVJVKISO4LJb6kiqxkFm9CABzOkdtXylf/exec';
+  // ============================================================
+
+  // ----------------------------------------------------------------
+  // Load worker list from Apps Script (reads your Excel file)
+  // ----------------------------------------------------------------
+  let workerWages = {}; // store wages keyed by name for wage calc
+
+  async function loadWorkers() {
+    const sel = document.getElementById('worker-select');
+    const errEl = document.getElementById('worker-load-err');
+
+    if (APPS_SCRIPT_URL === 'YOUR_APPS_SCRIPT_URL_HERE') {
+      // Demo mode — use sample names
+      const demo = [
+        { name: 'Ramesh Kumar', wage: 400 },
+        { name: 'Suresh Patel', wage: 350 },
+        { name: 'Dinesh Bhai', wage: 300 },
+        { name: 'Kamlesh', wage: 250 },
+      ];
+      populateWorkers(demo);
+      return;
+    }
+
+    try {
+      const resp = await fetch(APPS_SCRIPT_URL);
+      const data = await resp.json();
+      if (data.status === 'ok' && data.workers && data.workers.length) {
+        populateWorkers(data.workers);
+      } else {
+        throw new Error(data.message || 'Empty list');
+      }
+    } catch(e) {
+      sel.innerHTML = '<option value="">-- Could not load --</option>';
+      errEl.style.display = 'block';
+      errEl.textContent = '⚠️ Could not load worker list: ' + e.message;
+      sel.disabled = false;
+    }
+  }
+
+  function populateWorkers(workers) {
+    const sel = document.getElementById('worker-select');
+    workerWages = {};
+    sel.innerHTML = '<option value="">-- Select your name --</option>';
+    workers.forEach(w => {
+      workerWages[w.name] = w.wage;
+      const opt = document.createElement('option');
+      opt.value = w.name;
+      opt.textContent = w.name + (w.wage ? '  (₹' + w.wage + '/day)' : '');
+      sel.appendChild(opt);
+    });
+    sel.disabled = false;
+  }
+
+  // Run on page load
+  loadWorkers();
+
+  let selectedType = null;
+  let photoDataURL = null;
+  let videoStream = null;
+  let coords = null;
+  let currentStep = 1;
+
+  // Clock
+  function updateClock() {
+    const now = new Date();
+    const h = now.getHours(), m = now.getMinutes();
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    document.getElementById('clock').textContent =
+      `${(h%12||12).toString().padStart(2,'0')}:${m.toString().padStart(2,'0')} ${ampm}`;
+  }
+  updateClock();
+  setInterval(updateClock, 5000);
+
+  // Steps
+  function setStep(n) {
+    currentStep = n;
+    ['dot1','dot2','dot3'].forEach((id, i) => {
+      const d = document.getElementById(id);
+      d.className = 'step-dot';
+      if (i + 1 < n) d.classList.add('done');
+      else if (i + 1 === n) d.classList.add('active');
+    });
+  }
+
+  // Get location
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(pos => {
+      coords = { lat: pos.coords.latitude.toFixed(6), lng: pos.coords.longitude.toFixed(6) };
+      document.getElementById('loc-dot').className = 'loc-dot';
+      document.getElementById('loc-text').textContent = `Location: ${coords.lat}, ${coords.lng}`;
+    }, () => {
+      document.getElementById('loc-text').textContent = 'Location not available';
+      document.getElementById('loc-dot').className = 'loc-dot';
+      document.getElementById('loc-dot').style.background = '#aaa';
+    });
+  }
+
+  // Worker / type change — check readiness
+  document.getElementById('worker-select').addEventListener('change', checkReady);
+
+  function setType(type) {
+    selectedType = type;
+    document.getElementById('btn-entry').className = 'toggle-btn' + (type === 'entry' ? ' selected-entry' : '');
+    document.getElementById('btn-exit').className = 'toggle-btn' + (type === 'exit' ? ' selected-exit' : '');
+    setStep(2);
+    checkReady();
+  }
+
+  // Camera
+  async function startCamera() {
+    try {
+      videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+      document.getElementById('video').srcObject = videoStream;
+      document.getElementById('cam-start-btn').style.display = 'none';
+      document.getElementById('camera-wrap').style.display = 'block';
+      document.getElementById('preview').style.display = 'none';
+    } catch(e) {
+      alert('Camera access denied. Please allow camera in browser settings.');
+    }
+  }
+
+  function capturePhoto() {
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(video, 0, 0);
+
+    // Timestamp overlay
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    const now = new Date();
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillRect(0, canvas.height - 44, canvas.width, 44);
+    ctx.fillStyle = 'white';
+    ctx.font = 'bold 18px sans-serif';
+    ctx.fillText(now.toLocaleString('en-IN'), 12, canvas.height - 14);
+
+    photoDataURL = canvas.toDataURL('image/jpeg', 0.75);
+
+    const preview = document.getElementById('preview');
+    preview.src = photoDataURL;
+    preview.style.display = 'block';
+    document.getElementById('camera-wrap').style.display = 'none';
+    document.getElementById('cam-hint').textContent = '✓ Photo captured';
+
+    // Stop stream
+    if (videoStream) videoStream.getTracks().forEach(t => t.stop());
+
+    // Show retake option
+    document.getElementById('cam-start-btn').textContent = '';
+    document.getElementById('cam-start-btn').innerHTML = '<span style="font-size:18px">🔄 Retake photo</span>';
+    document.getElementById('cam-start-btn').style.padding = '14px';
+    document.getElementById('cam-start-btn').style.display = 'flex';
+    document.getElementById('cam-start-btn').onclick = retakePhoto;
+
+    setStep(3);
+    checkReady();
+  }
+
+  function retakePhoto() {
+    photoDataURL = null;
+    document.getElementById('preview').style.display = 'none';
+    document.getElementById('cam-hint').textContent = 'Take a clear selfie so your presence is recorded.';
+    document.getElementById('cam-start-btn').innerHTML = '<span class="cam-icon">📷</span>Tap to open camera';
+    document.getElementById('cam-start-btn').style.padding = '50px 20px';
+    document.getElementById('cam-start-btn').onclick = startCamera;
+    setStep(2);
+    checkReady();
+  }
+
+  function checkReady() {
+    const worker = document.getElementById('worker-select').value;
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = !(worker && selectedType && photoDataURL);
+  }
+
+  // Submit
+  async function submitAttendance() {
+    const worker = document.getElementById('worker-select').value;
+    if (!worker || !selectedType || !photoDataURL) return;
+
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Submitting...';
+    document.getElementById('error-msg').style.display = 'none';
+
+    const now = new Date();
+    const payload = {
+      worker,
+      type: selectedType,
+      timestamp: now.toISOString(),
+      date: now.toLocaleDateString('en-IN'),
+      time: now.toLocaleTimeString('en-IN'),
+      lat: coords ? coords.lat : '',
+      lng: coords ? coords.lng : '',
+      photo: photoDataURL
+    };
+
+    try {
+      if (APPS_SCRIPT_URL === 'YOUR_APPS_SCRIPT_URL_HERE') {
+        // Demo mode — simulate success
+        await new Promise(r => setTimeout(r, 1500));
+        showSuccess(worker, selectedType, now);
+        return;
+      }
+
+      const resp = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      const result = await resp.json();
+      if (result.status === 'ok') {
+        showSuccess(worker, selectedType, now);
+      } else {
+        throw new Error(result.message || 'Server error');
+      }
+    } catch(e) {
+      btn.disabled = false;
+      btn.innerHTML = 'Submit Attendance';
+      const err = document.getElementById('error-msg');
+      err.textContent = '❌ Could not submit. Check your internet and try again. (' + e.message + ')';
+      err.style.display = 'block';
+    }
+  }
+
+  function showSuccess(worker, type, now) {
+    document.getElementById('form-screen').style.display = 'none';
+    const s = document.getElementById('success-screen');
+    s.style.display = 'block';
+    document.getElementById('success-title').textContent =
+      type === 'entry' ? 'Entry recorded! 🌅' : 'Exit recorded! 🌆';
+    document.getElementById('success-sub').textContent =
+      `${worker}\n${now.toLocaleTimeString('en-IN')} · ${now.toLocaleDateString('en-IN')}`;
+  }
+
+  function resetForm() {
+    document.getElementById('form-screen').style.display = 'block';
+    document.getElementById('success-screen').style.display = 'none';
+    document.getElementById('worker-select').value = '';
+    selectedType = null;
+    photoDataURL = null;
+    videoStream = null;
+    document.getElementById('btn-entry').className = 'toggle-btn';
+    document.getElementById('btn-exit').className = 'toggle-btn';
+    document.getElementById('preview').style.display = 'none';
+    document.getElementById('cam-start-btn').innerHTML = '<span class="cam-icon">📷</span>Tap to open camera';
+    document.getElementById('cam-start-btn').style.padding = '50px 20px';
+    document.getElementById('cam-start-btn').onclick = startCamera;
+    document.getElementById('cam-hint').textContent = 'Take a clear selfie so your presence is recorded.';
+    document.getElementById('submit-btn').disabled = true;
+    document.getElementById('submit-btn').innerHTML = 'Submit Attendance';
+    document.getElementById('error-msg').style.display = 'none';
+    document.getElementById('camera-wrap').style.display = 'none';
+    document.getElementById('cam-start-btn').style.display = 'flex';
+    setStep(1);
+  }
+</script>
+</body>
+</html>
